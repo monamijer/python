@@ -1,6 +1,6 @@
 package com.example.demo.controller;
 
-import Entites.EtudiantEntite;
+import com.example.demo.Entites.EtudiantEntite;
 import com.example.demo.service.EtudiantService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
