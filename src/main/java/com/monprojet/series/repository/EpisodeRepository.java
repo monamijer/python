@@ -1,6 +1,8 @@
 // EpisodeRepository.java
 package com.monprojet.series.repository;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import com.monprojet.series.entity.Episode;
 import org.springframework.data.jpa.repository.JpaRepository;
 
