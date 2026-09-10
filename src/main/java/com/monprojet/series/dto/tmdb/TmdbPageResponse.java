@@ -1,5 +1,5 @@
 // TmdbPageResponse.java — TMDB wraps every list endpoint in { results: [...] }
-package com.monprojet.series.dto.response;
+package com.monprojet.series.dto.tmdb;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
