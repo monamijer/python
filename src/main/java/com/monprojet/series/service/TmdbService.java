@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.util.UriBuilder;
 
 import java.util.List;
 
@@ -140,7 +141,7 @@ public class TmdbService {
      * ResourceNotFoundException and any other failure (network, 5xx, timeout)
      * into TmdbIndisponibleException — callers never touch RestClient directly.
      */
-    private <T> T appeler(java.util.function.Function<RestClient.RequestHeadersUriSpec.UriBuilder, java.net.URI> uriFn, Class<T> type) {
+    private <T> T appeler(java.util.function.Function<UriBuilder, java.net.URI> uriFn, Class<T> type) {
         try {
             return tmdbRestClient.get()
                     .uri(uriFn::apply)
