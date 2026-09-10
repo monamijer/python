@@ -3,6 +3,7 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+*.class
 
 ### STS ###
 .apt_generated
@@ -31,3 +32,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# OS
+.DS_Store
+
+# Env / secrets — never commit the TMDB API key
+.env
+application-local.properties
