@@ -7,6 +7,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import main.java.com.monprojet.series.exception.TmdbIndisponibleException;
+
 import java.util.List;
 
 @RestControllerAdvice
@@ -26,7 +28,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
-    // Triggered by @Valid failures on @RequestBody DTOs (SerieRequest, UtilisateurRequest...)
+    // Triggered by @Valid failures on @RequestBody DTOs (SerieRequest,
+    // UtilisateurRequest...)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> gererValidation(MethodArgumentNotValidException ex) {
         List<String> details = ex.getBindingResult().getFieldErrors().stream()
@@ -44,8 +47,14 @@ public class GlobalExceptionHandler {
         var body = new ApiErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Erreur interne",
-                "Une erreur inattendue est survenue"
-        );
+                "Une erreur inattendue est survenue");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    @ExceptionHandler(TmdbIndisponibleException.class)
+    public ResponseEntity<ApiErrorResponse> gererTmdbIndisponible(TmdbIndisponibleException ex) {
+        var body = new ApiErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE.value(), "Service externe indisponible", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }
 }
