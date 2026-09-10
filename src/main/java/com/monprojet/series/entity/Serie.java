@@ -1,0 +1,48 @@
+// Serie.java
+package com.monprojet.series.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "serie")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Serie {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 150)
+    private String titre;
+
+    @Column(length = 80)
+    private String genre;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    private Integer anneeSortie;
+
+    private Double note;
+
+    private String imageUrl;
+
+    // Reference to the source TMDB series, used for import/dedup (nullable if manually created)
+    private Long tmdbId;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "serie", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Saison> saisons = new ArrayList<>();
+}
