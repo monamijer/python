@@ -1,5 +1,5 @@
 // TmdbService.java
-package main.java.com.monprojet.series.service;
+package com.monprojet.series.service;
 
 import com.monprojet.series.dto.response.TmdbSerieResponse;
 import com.monprojet.series.dto.tmdb.*;
