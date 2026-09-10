@@ -37,5 +37,6 @@ build/
 .DS_Store
 
 # Env / secrets — never commit the TMDB API key
+# .gitignore addition — the real key must never be committed
 .env
 application-local.properties
