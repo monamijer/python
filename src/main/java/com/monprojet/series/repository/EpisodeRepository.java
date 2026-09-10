@@ -17,4 +17,11 @@ public interface EpisodeRepository extends JpaRepository<Episode, Long> {
     long countBySaison_Serie_Id(Long serieId);
 
     long countBySaisonId(Long saisonId);
+
+    @Query("""
+    SELECT COALESCE(SUM(e.dureeMinutes), 0)
+    FROM Episode e
+    WHERE e.saison.serie.id = :serieId
+    """)
+long sommeDureeTotaleParSerie(@Param("serieId") Long serieId);
 }
