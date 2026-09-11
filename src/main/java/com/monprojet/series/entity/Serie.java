@@ -1,4 +1,3 @@
-// Serie.java
 package com.monprojet.series.entity;
 
 import jakarta.persistence.*;
