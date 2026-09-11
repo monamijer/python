@@ -30,9 +30,9 @@ public class UtilisateurController {
         return UtilisateurMapper.toResponse(utilisateurService.obtenirParId(id));
     }
 
-    @PostMapping
-    public ResponseEntity<UtilisateurResponse> creer(@Valid @RequestBody UtilisateurRequest request) {
-        var cree = utilisateurService.creer(UtilisateurMapper.toEntity(request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(UtilisateurMapper.toResponse(cree));
-    }
+    // @PostMapping
+    // public ResponseEntity<UtilisateurResponse> creer(@Valid @RequestBody UtilisateurRequest request) {
+    //     var cree = utilisateurService.creer(UtilisateurMapper.toEntity(request));
+    //     return ResponseEntity.status(HttpStatus.CREATED).body(UtilisateurMapper.toResponse(cree));
+    // }
 }
