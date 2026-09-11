@@ -1,0 +1,53 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Series TV — Suivi de séries</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>📺 Series TV</h1>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="mes-series">Mes séries</button>
+      <button class="tab-btn" data-tab="decouvrir">Découvrir (TMDB)</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Onglet : Mes séries -->
+    <section id="mes-series" class="tab-panel active">
+      <form id="form-ajout-serie" class="card form-inline">
+        <input type="text" id="input-titre" placeholder="Titre de la série" required>
+        <input type="text" id="input-genre" placeholder="Genre">
+        <button type="submit">Ajouter</button>
+      </form>
+
+      <div id="liste-series" class="grid"></div>
+    </section>
+
+    <!-- Onglet : Découvrir via TMDB -->
+    <section id="decouvrir" class="tab-panel">
+      <form id="form-recherche-tmdb" class="card form-inline">
+        <input type="text" id="input-recherche" placeholder="Rechercher une série...">
+        <button type="submit">Rechercher</button>
+        <button type="button" id="btn-populaires">Populaires</button>
+      </form>
+
+      <div id="resultats-tmdb" class="grid"></div>
+    </section>
+  </main>
+
+  <!-- Panneau détail série (saisons, épisodes, progression) -->
+  <div id="panneau-detail" class="panneau-detail hidden">
+    <div class="panneau-contenu">
+      <button id="btn-fermer-panneau" class="btn-fermer">&times;</button>
+      <div id="detail-contenu"></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

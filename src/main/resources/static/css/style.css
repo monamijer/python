@@ -1,0 +1,188 @@
+/* css/style.css */
+:root {
+  --couleur-primaire: #2f5496;
+  --couleur-fond: #f4f6fa;
+  --couleur-carte: #ffffff;
+  --couleur-texte: #1a1a1a;
+  --couleur-accent: #2ecc71;
+  --rayon: 10px;
+  --espace: 1rem;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--couleur-fond);
+  color: var(--couleur-texte);
+  min-height: 100dvh;
+}
+
+.app-header {
+  background: var(--couleur-primaire);
+  color: white;
+  padding: var(--espace);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app-header h1 { font-size: 1.3rem; margin-bottom: 0.75rem; }
+
+.tabs { display: flex; gap: 0.5rem; }
+
+.tab-btn {
+  flex: 1;
+  min-height: 44px; /* zone tactile minimale */
+  padding: 0.6rem;
+  border: none;
+  border-radius: var(--rayon);
+  background: rgba(255,255,255,0.15);
+  color: white;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.tab-btn.active { background: white; color: var(--couleur-primaire); font-weight: 600; }
+
+main { padding: var(--espace); max-width: 900px; margin: 0 auto; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.card {
+  background: var(--couleur-carte);
+  border-radius: var(--rayon);
+  padding: var(--espace);
+  margin-bottom: var(--espace);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.form-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.form-inline input {
+  min-height: 44px;
+  padding: 0 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: var(--rayon);
+  font-size: 1rem;
+}
+
+.form-inline button {
+  min-height: 44px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: var(--rayon);
+  background: var(--couleur-primaire);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* Grille : 1 colonne mobile, plusieurs colonnes dès que la place le permet */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--espace);
+}
+
+.serie-card {
+  background: var(--couleur-carte);
+  border-radius: var(--rayon);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+
+.serie-card img {
+  width: 100%;
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  background: #ddd;
+}
+
+.serie-card .contenu { padding: 0.75rem; flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
+.serie-card h3 { font-size: 0.95rem; }
+.serie-card .meta { font-size: 0.8rem; color: #666; }
+
+.barre-progression {
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+.barre-progression .remplissage { height: 100%; background: var(--couleur-accent); }
+
+.btn-supprimer, .btn-importer {
+  min-height: 36px;
+  border: none;
+  border-radius: var(--rayon);
+  background: #e74c3c;
+  color: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.btn-importer { background: var(--couleur-accent); }
+
+.panneau-detail {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: flex-end;
+  z-index: 20;
+}
+.panneau-detail.hidden { display: none; }
+
+.panneau-contenu {
+  background: var(--couleur-carte);
+  width: 100%;
+  max-height: 85dvh;
+  overflow-y: auto;
+  border-radius: var(--rayon) var(--rayon) 0 0;
+  padding: var(--espace);
+  position: relative;
+}
+
+.btn-fermer {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  background: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.episode-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.episode-ligne.vu { color: #999; text-decoration: line-through; }
+
+/* Desktop : plus de colonnes, panneau détail en modale centrée */
+@media (min-width: 768px) {
+  .form-inline { flex-direction: row; }
+  .form-inline input { flex: 1; }
+
+  .panneau-detail { align-items: center; justify-content: center; }
+  .panneau-contenu {
+    max-width: 600px;
+    max-height: 80dvh;
+    border-radius: var(--rayon);
+  }
+}
