@@ -2,15 +2,51 @@
 // Vanilla JS, no build step — fetch() against the same-origin Spring Boot API.
 
 const API = "/api";
-const UTILISATEUR_ID = 1; // simplifié pour l'examen : un seul utilisateur de démo
+const UTILISATEUR_ID = 1;
+
+document.querySelectorAll(".auth-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".auth-tab").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".auth-panel").forEach((p) => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(`form-${btn.dataset.auth}`).classList.add("active");
+    document.getElementById("login-erreur").textContent = "";
+  });
+});
+
+// --- Auth ---
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function setToken(token) {
+  localStorage.setItem("token", token);
+}
+
+function deconnexion() {
+  localStorage.removeItem("token");
+  location.reload();
+}
 
 // --- Utilitaires ---
 
 async function appelApi(url, options = {}) {
-  const reponse = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  const token = getToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const reponse = await fetch(url, { headers, ...options });
+
+  if (reponse.status === 401 || reponse.status === 403) {
+    // Token absent/expiré → on force le login
+    if (!url.includes("/auth/")) {
+      localStorage.removeItem("token");
+      afficherLogin();
+    }
+    throw new Error("Non authentifié");
+  }
+
   if (!reponse.ok) {
     const erreur = await reponse.json().catch(() => ({ message: reponse.statusText }));
     throw new Error(erreur.message || "Erreur API");
@@ -23,6 +59,54 @@ function creerElement(html) {
   conteneur.innerHTML = html.trim();
   return conteneur.firstElementChild;
 }
+
+// --- Login / Inscription ---
+
+function afficherLogin() {
+  document.getElementById("app").classList.add("hidden");
+  document.getElementById("login").classList.remove("hidden");
+}
+
+function afficherApp() {
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  chargerMesSeries();
+}
+
+document.getElementById("form-connexion").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("login-email").value;
+  const motDePasse = document.getElementById("login-motdepasse").value;
+  try {
+    const data = await appelApi(`${API}/auth/connexion`, {
+      method: "POST",
+      body: JSON.stringify({ email, motDePasse }),
+    });
+    setToken(data.token);
+    afficherApp();
+  } catch (err) {
+    document.getElementById("login-erreur").textContent = "Identifiants invalides";
+  }
+});
+
+document.getElementById("form-inscription").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pseudo = document.getElementById("inscription-pseudo").value;
+  const email = document.getElementById("inscription-email").value;
+  const motDePasse = document.getElementById("inscription-motdepasse").value;
+  try {
+    const data = await appelApi(`${API}/auth/inscription`, {
+      method: "POST",
+      body: JSON.stringify({ pseudo, email, motDePasse }),
+    });
+    setToken(data.token);
+    afficherApp();
+  } catch (err) {
+    document.getElementById("login-erreur").textContent = err.message;
+  }
+});
+
+document.getElementById("btn-deconnexion")?.addEventListener("click", deconnexion);
 
 // --- Onglets ---
 
@@ -41,16 +125,20 @@ async function chargerMesSeries() {
   const conteneur = document.getElementById("liste-series");
   conteneur.innerHTML = "<p>Chargement...</p>";
 
-  const series = await appelApi(`${API}/series`);
+  let series;
+  try {
+    series = await appelApi(`${API}/series`);
+  } catch (err) {
+    conteneur.innerHTML = `<p>Erreur : ${err.message}</p>`;
+    return;
+  }
   conteneur.innerHTML = "";
 
   for (const serie of series) {
     let progression = null;
     try {
       progression = await appelApi(`${API}/utilisateurs/${UTILISATEUR_ID}/progression/${serie.id}`);
-    } catch {
-      // pas d'épisodes enregistrés pour cette série — pas grave, on affiche sans barre
-    }
+    } catch { /* pas de progression */ }
 
     const carte = creerElement(`
       <div class="serie-card" data-id="${serie.id}">
@@ -85,17 +173,15 @@ document.getElementById("form-ajout-serie").addEventListener("submit", async (e)
   e.preventDefault();
   const titre = document.getElementById("input-titre").value;
   const genre = document.getElementById("input-genre").value;
-
   await appelApi(`${API}/series`, {
     method: "POST",
     body: JSON.stringify({ titre, genre }),
   });
-
   e.target.reset();
   chargerMesSeries();
 });
 
-// --- Détail série : saisons, épisodes, progression ---
+// --- Détail série ---
 
 async function ouvrirDetailSerie(serie) {
   const panneau = document.getElementById("panneau-detail");
@@ -134,7 +220,7 @@ async function ouvrirDetailSerie(serie) {
         }
       } catch (err) {
         alert(err.message);
-        e.target.checked = !e.target.checked; // annule visuellement si le serveur refuse
+        e.target.checked = !e.target.checked;
       }
     });
   });
@@ -142,10 +228,10 @@ async function ouvrirDetailSerie(serie) {
 
 document.getElementById("btn-fermer-panneau").addEventListener("click", () => {
   document.getElementById("panneau-detail").classList.add("hidden");
-  chargerMesSeries(); // rafraîchit les barres de progression après fermeture
+  chargerMesSeries();
 });
 
-// --- Découvrir via TMDB ---
+// --- TMDB ---
 
 function afficherResultatsTmdb(series) {
   const conteneur = document.getElementById("resultats-tmdb");
@@ -197,4 +283,8 @@ document.getElementById("btn-populaires").addEventListener("click", async () => 
 
 // --- Démarrage ---
 
-chargerMesSeries();
+if (getToken()) {
+  afficherApp();
+} else {
+  afficherLogin();
+}

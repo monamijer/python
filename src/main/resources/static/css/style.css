@@ -186,3 +186,125 @@ main { padding: var(--espace); max-width: 900px; margin: 0 auto; }
     border-radius: var(--rayon);
   }
 }
+.hidden { display: none !important; }
+/* ===== Écran de connexion ===== */
+.ecran-auth {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--couleur-fond);
+}
+
+.auth-carte {
+  background: var(--couleur-carte);
+  border-radius: var(--rayon);
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.auth-carte h1 {
+  text-align: center;
+  color: var(--couleur-primaire);
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+}
+
+.auth-carte h2 {
+  font-size: 1rem;
+  color: #666;
+  margin: 1.2rem 0 0.6rem;
+  font-weight: 600;
+}
+
+.form-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.form-auth input {
+  min-height: 44px;
+  padding: 0 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: var(--rayon);
+  font-size: 1rem;
+}
+
+.form-auth button {
+  min-height: 44px;
+  border: none;
+  border-radius: var(--rayon);
+  background: var(--couleur-primaire);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.form-auth button:hover { opacity: 0.9; }
+
+.erreur {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 1rem;
+  min-height: 1.2rem;
+}
+
+/* ===== Header avec bouton déconnexion ===== */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.header-top h1 { margin: 0; }
+
+.btn-deconnexion {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--rayon);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-deconnexion:hover { background: rgba(255,255,255,0.3); }
+
+/* Onglets auth */
+.auth-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  background: #f0f0f0;
+  padding: 0.3rem;
+  border-radius: var(--rayon);
+}
+
+.auth-tab {
+  flex: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: calc(var(--rayon) - 2px);
+  background: transparent;
+  color: #666;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.auth-tab.active {
+  background: white;
+  color: var(--couleur-primaire);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.auth-panel { display: none; }
+.auth-panel.active { display: flex; }
