@@ -35,4 +35,9 @@ public class UtilisateurService {
         }
         return utilisateurRepository.save(utilisateur);
     }
+
+    public Utilisateur obtenirParEmail(String email) {
+    return utilisateurRepository.findByEmail(email)
+            .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable : email=" + email));
+}
 }
