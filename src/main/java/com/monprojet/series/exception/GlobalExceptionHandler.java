@@ -41,6 +41,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> gererRouteIntrouvable(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        var body = new ApiErrorResponse(
+                HttpStatus.NOT_FOUND.value(), "Route introuvable", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
     // Safety net — never leaks a raw stack trace to the client
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> gererErreurInattendue(Exception ex) {
