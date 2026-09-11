@@ -1,4 +1,3 @@
-// UtilisateurService.java
 package com.monprojet.series.service;
 
 import com.monprojet.series.entity.Utilisateur;
@@ -36,8 +35,9 @@ public class UtilisateurService {
         return utilisateurRepository.save(utilisateur);
     }
 
+    @Transactional(readOnly = true)
     public Utilisateur obtenirParEmail(String email) {
-    return utilisateurRepository.findByEmail(email)
-            .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable : email=" + email));
-}
+        return utilisateurRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable : email=" + email));
+    }
 }
