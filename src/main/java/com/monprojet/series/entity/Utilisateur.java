@@ -1,4 +1,3 @@
-// Utilisateur.java
 package com.monprojet.series.entity;
 
 import jakarta.persistence.*;
@@ -30,7 +29,17 @@ public class Utilisateur {
     @Column(nullable = false, unique = true)
     private String email;
 
+    // BCrypt hash — never the plain password
+    @Column(nullable = false)
+    private String motDePasse;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private RoleUtilisateur role = RoleUtilisateur.USER;
+
     @Builder.Default
     @OneToMany(mappedBy = "utilisateur", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Visionnage> visionnages = new ArrayList<>();
+
 }
