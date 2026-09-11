@@ -1,5 +1,5 @@
 // TmdbController.java
-package main.java.com.monprojet.series.controller;
+package com.monprojet.series.controller;
 
 import com.monprojet.series.dto.response.SerieResponse;
 import com.monprojet.series.dto.response.TmdbSerieResponse;

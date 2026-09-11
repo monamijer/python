@@ -1,5 +1,5 @@
 // TmdbConfig.java
-package main.java.com.monprojet.series.config;
+package com.monprojet.series.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
