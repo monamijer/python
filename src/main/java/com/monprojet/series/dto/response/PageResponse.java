@@ -4,7 +4,7 @@ import java.util.List;
 
 
 public record PageResponse<T>(
-        List<T> resultat,
+        List<T> resultats,
         int page,
         int totalPages,
         int totalResultats
