@@ -73,6 +73,64 @@ function creerElement(html) {
   return conteneur.firstElementChild;
 }
 
+let elementDeclencheur = null; // remembers what had focus before the modal opened, to restore it on close
+
+function ouvrirModale() {
+  const panneau = document.getElementById("panneau-detail");
+  elementDeclencheur = document.activeElement;
+
+  panneau.classList.remove("hidden");
+  panneau.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden"; // block background scroll
+
+  // Focus the first focusable element inside the modal
+  const premierFocusable = panneau.querySelector("button, [href], input, select, textarea, [tabindex]");
+  premierFocusable?.focus();
+
+  document.addEventListener("keydown", gererClavierModale);
+}
+
+function fermerModale() {
+  const panneau = document.getElementById("panneau-detail");
+  panneau.classList.add("hidden");
+  panneau.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+
+  document.removeEventListener("keydown", gererClavierModale);
+  elementDeclencheur?.focus(); // return focus to whatever opened the modal
+}
+
+function gererClavierModale(e) {
+  const panneau = document.getElementById("panneau-detail");
+
+  if (e.key === "Escape") {
+    fermerModale();
+    return;
+  }
+
+  if (e.key === "Tab") {
+    // Focus trap: keep Tab/Shift+Tab cycling within the modal only
+    const focusables = panneau.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const premier = focusables[0];
+    const dernier = focusables[focusables.length - 1];
+
+    if (e.shiftKey && document.activeElement === premier) {
+      e.preventDefault();
+      dernier.focus();
+    } else if (!e.shiftKey && document.activeElement === dernier) {
+      e.preventDefault();
+      premier.focus();
+    }
+  }
+}
+
+// Click on the overlay (outside .panneau-contenu) closes the modal
+document.getElementById("panneau-detail").addEventListener("click", (e) => {
+  if (e.target.id === "panneau-detail") fermerModale();
+});
+
 // --- Login / Inscription ---
 
 function afficherLogin() {

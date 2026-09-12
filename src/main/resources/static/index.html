@@ -5,33 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Series TV — Suivi de séries</title>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="image/favicon.ico" type="image/x-icon">
 </head>
 <body>
 
   <!-- ===== LOGIN SCREEN ===== -->
-<div id="login" class="ecran-auth">
+  <div id="login" class="ecran-auth">
     <div class="auth-carte">
       <h1>📺 Series TV</h1>
 
-      <div class="auth-tabs">
-        <button type="button" class="auth-tab active" data-auth="connexion">Connexion</button>
-        <button type="button" class="auth-tab" data-auth="inscription">Inscription</button>
+      <div class="auth-tabs" role="tablist" aria-label="Authentification">
+        <button type="button" class="auth-tab active" data-auth="connexion"
+                role="tab" aria-selected="true" aria-controls="form-connexion" id="tab-connexion">
+          Connexion
+        </button>
+        <button type="button" class="auth-tab" data-auth="inscription"
+                role="tab" aria-selected="false" aria-controls="form-inscription" id="tab-inscription">
+          Inscription
+        </button>
       </div>
 
-      <form id="form-connexion" class="form-auth auth-panel active">
-        <input id="login-email" type="email" placeholder="Email" required>
-        <input id="login-motdepasse" type="password" placeholder="Mot de passe" required>
+      <form id="form-connexion" class="form-auth auth-panel active"
+            role="tabpanel" aria-labelledby="tab-connexion">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" required autocomplete="email">
+
+        <label for="login-motdepasse">Mot de passe</label>
+        <input id="login-motdepasse" type="password" required autocomplete="current-password">
+
         <button type="submit">Se connecter</button>
       </form>
 
-      <form id="form-inscription" class="form-auth auth-panel">
-        <input id="inscription-pseudo" type="text" placeholder="Pseudo" required>
-        <input id="inscription-email" type="email" placeholder="Email" required>
-        <input id="inscription-motdepasse" type="password" placeholder="Mot de passe (min 8)" required>
+      <form id="form-inscription" class="form-auth auth-panel" hidden
+            role="tabpanel" aria-labelledby="tab-inscription">
+        <label for="inscription-pseudo">Pseudo</label>
+        <input id="inscription-pseudo" type="text" required autocomplete="nickname">
+
+        <label for="inscription-email">Email</label>
+        <input id="inscription-email" type="email" required autocomplete="email">
+
+        <label for="inscription-motdepasse">Mot de passe (min. 8 caractères)</label>
+        <input id="inscription-motdepasse" type="password" required minlength="8" autocomplete="new-password">
+
         <button type="submit">S'inscrire</button>
       </form>
 
-      <p id="login-erreur" class="erreur"></p>
+      <p id="login-erreur" class="erreur" role="alert" aria-live="assertive"></p>
     </div>
   </div>
 
@@ -40,37 +59,54 @@
     <header class="app-header">
       <div class="header-top">
         <h1>📺 Series TV</h1>
-        <button id="btn-deconnexion" class="btn-deconnexion">Déconnexion</button>
+        <div class="header-user">
+          <span id="nom-utilisateur"></span>
+          <button id="btn-deconnexion" class="btn-deconnexion">Déconnexion</button>
+        </div>
       </div>
-      <nav class="tabs">
-        <button class="tab-btn active" data-tab="mes-series">Mes séries</button>
-        <button class="tab-btn" data-tab="decouvrir">Découvrir (TMDB)</button>
+      <nav class="tabs" role="tablist" aria-label="Sections principales">
+        <button class="tab-btn active" data-tab="mes-series"
+                role="tab" aria-selected="true" aria-controls="mes-series" id="onglet-mes-series">
+          Mes séries
+        </button>
+        <button class="tab-btn" data-tab="decouvrir"
+                role="tab" aria-selected="false" aria-controls="decouvrir" id="onglet-decouvrir">
+          Découvrir (TMDB)
+        </button>
       </nav>
     </header>
 
     <main>
-      <section id="mes-series" class="tab-panel active">
+      <section id="mes-series" class="tab-panel active" role="tabpanel" aria-labelledby="onglet-mes-series">
         <form id="form-ajout-serie" class="card form-inline">
+          <label for="input-titre" class="sr-only">Titre de la série</label>
           <input type="text" id="input-titre" placeholder="Titre de la série" required>
+
+          <label for="input-genre" class="sr-only">Genre</label>
           <input type="text" id="input-genre" placeholder="Genre">
+
           <button type="submit">Ajouter</button>
         </form>
-        <div id="liste-series" class="grid"></div>
+        <div id="liste-series" class="grid" aria-live="polite"></div>
       </section>
 
-      <section id="decouvrir" class="tab-panel">
+      <section id="decouvrir" class="tab-panel" role="tabpanel" aria-labelledby="onglet-decouvrir" hidden>
         <form id="form-recherche-tmdb" class="card form-inline">
+          <label for="input-recherche" class="sr-only">Rechercher une série</label>
           <input type="text" id="input-recherche" placeholder="Rechercher une série...">
+
           <button type="submit">Rechercher</button>
           <button type="button" id="btn-populaires">Populaires</button>
         </form>
-        <div id="resultats-tmdb" class="grid"></div>
+        <div id="resultats-tmdb" class="grid" aria-live="polite"></div>
       </section>
     </main>
 
-    <div id="panneau-detail" class="panneau-detail hidden">
+    <!-- Modal: hidden by default, JS adds/removes aria-hidden and manages focus -->
+    <div id="panneau-detail" class="panneau-detail hidden"
+         role="dialog" aria-modal="true" aria-labelledby="titre-detail" aria-hidden="true">
       <div class="panneau-contenu">
-        <button id="btn-fermer-panneau" class="btn-fermer">&times;</button>
+        <button id="btn-fermer-panneau" class="btn-fermer" aria-label="Fermer la fenêtre de détail">&times;</button>
         <div id="detail-contenu"></div>
       </div>
     </div>
