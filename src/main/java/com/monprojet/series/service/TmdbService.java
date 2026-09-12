@@ -6,12 +6,15 @@ import com.monprojet.series.dto.tmdb.*;
 import com.monprojet.series.entity.Episode;
 import com.monprojet.series.entity.Saison;
 import com.monprojet.series.entity.Serie;
+import com.monprojet.series.entity.Utilisateur;
 import com.monprojet.series.exception.BusinessException;
 import com.monprojet.series.exception.ResourceNotFoundException;
 import com.monprojet.series.exception.TmdbIndisponibleException;
 import com.monprojet.series.repository.EpisodeRepository;
 import com.monprojet.series.repository.SaisonRepository;
 import com.monprojet.series.repository.SerieRepository;
+import com.monprojet.series.repository.UtilisateurRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -156,4 +159,43 @@ public class TmdbService {
             throw new TmdbIndisponibleException("Impossible de contacter TMDB.", ex);
         }
     }
+
+    // TmdbService.java — updated importerSerie signature and body (only the changed parts)
+
+private final UtilisateurRepository utilisateurRepository; // add this field via @RequiredArgsConstructor
+
+@Transactional
+public Serie importerSerie(Long utilisateurId, Long tmdbId) {
+    // RG7 is now scoped per user: the same TMDB series can be imported
+    // independently by different users, but not twice by the same one.
+    if (serieRepository.findByTmdbIdAndUtilisateurId(tmdbId, utilisateurId).isPresent()) {
+        throw new BusinessException("Cette série TMDB a déjà été importée (tmdbId=" + tmdbId + ").");
+    }
+
+    Utilisateur utilisateur = utilisateurRepository.findById(utilisateurId)
+            .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable : id=" + utilisateurId));
+
+    TmdbSerieDetailDto detail = appeler(uri -> uri.path("/tv/{id}")
+            .queryParam("api_key", apiKey)
+            .queryParam("language", "fr-FR")
+            .build(tmdbId), TmdbSerieDetailDto.class);
+
+    Serie serie = Serie.builder()
+            .titre(detail.name())
+            .description(detail.overview())
+            .anneeSortie(extraireAnnee(detail.firstAirDate()))
+            .note(detail.voteAverage())
+            .imageUrl(construireUrlImage(detail.posterPath()))
+            .tmdbId(detail.id())
+            .utilisateur(utilisateur)
+            .build();
+    serie = serieRepository.save(serie);
+
+    for (TmdbSeasonDto saisonDto : detail.seasons()) {
+        if (saisonDto.numeroSaison() == 0) continue;
+        importerSaison(serie, tmdbId, saisonDto);
+    }
+
+    return serie;
+}
 }

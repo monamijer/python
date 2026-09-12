@@ -38,10 +38,15 @@ public class Serie {
 
     private String imageUrl;
 
-    // Reference to the source TMDB series, used for import/dedup (nullable if manually created)
+    // Reference to the source TMDB series, used for import/dedup (nullable if
+    // manually created)
     private Long tmdbId;
 
     @Builder.Default
     @OneToMany(mappedBy = "serie", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Saison> saisons = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "utilisateur_id", nullable = false)
+    private Utilisateur utilisateur;
 }

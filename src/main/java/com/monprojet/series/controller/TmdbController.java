@@ -39,4 +39,10 @@ public class TmdbController {
         var serieImportee = tmdbService.importerSerie(tmdbId);
         return ResponseEntity.status(HttpStatus.CREATED).body(SerieMapper.toResponse(serieImportee));
     }
+
+    @PostMapping("/api/utilisateurs/{userId}/tmdb/importer/{tmdbId}")
+    public ResponseEntity<SerieResponse> importer(@PathVariable Long userId, @PathVariable Long tmdbId) {
+        var serieImportee = tmdbService.importerSerie(userId, tmdbId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(SerieMapper.toResponse(serieImportee));
+    }
 }

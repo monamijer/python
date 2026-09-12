@@ -20,15 +20,24 @@ function getToken() {
   return localStorage.getItem("token");
 }
 
+function setSession(data.token, data.utilisateurId) {
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("utilisateurId", data.utilisateurId);
+}
+
+function getUtilisateurId() {
+  return localStorage.getItem("utilisateurId");
+}
+
 function setToken(token) {
   localStorage.setItem("token", token);
 }
 
 function deconnexion() {
   localStorage.removeItem("token");
+  localStorage.removeItem("utilisateurId");
   location.reload();
 }
-
 // --- Utilitaires ---
 
 async function appelApi(url, options = {}) {
@@ -67,9 +76,10 @@ function afficherLogin() {
   document.getElementById("login").classList.remove("hidden");
 }
 
-function afficherApp() {
+function afficherApp(pseudo) {
   document.getElementById("login").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
+  if (pseudo) document.getElementById("nom-utilisateur").textContent = `👤 ${pseudo}`;
   chargerMesSeries();
 }
 
@@ -82,8 +92,9 @@ document.getElementById("form-connexion").addEventListener("submit", async (e) =
       method: "POST",
       body: JSON.stringify({ email, motDePasse }),
     });
-    setToken(data.token);
-    afficherApp();
+        setToken(data.token);
+    localStorage.setItem("pseudo", data.pseudo);
+    afficherApp(data.pseudo);
   } catch (err) {
     document.getElementById("login-erreur").textContent = "Identifiants invalides";
   }
@@ -99,8 +110,9 @@ document.getElementById("form-inscription").addEventListener("submit", async (e)
       method: "POST",
       body: JSON.stringify({ pseudo, email, motDePasse }),
     });
-    setToken(data.token);
-    afficherApp();
+        setToken(data.token);
+    localStorage.setItem("pseudo", data.pseudo);
+    afficherApp(data.pseudo);
   } catch (err) {
     document.getElementById("login-erreur").textContent = err.message;
   }
@@ -119,7 +131,7 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
   });
 });
 
-// --- Mes séries ---
+// --- My series ---
 
 async function chargerMesSeries() {
   const conteneur = document.getElementById("liste-series");
@@ -181,7 +193,7 @@ document.getElementById("form-ajout-serie").addEventListener("submit", async (e)
   chargerMesSeries();
 });
 
-// --- Détail série ---
+// --- Detail serie ---
 
 async function ouvrirDetailSerie(serie) {
   const panneau = document.getElementById("panneau-detail");
@@ -284,7 +296,8 @@ document.getElementById("btn-populaires").addEventListener("click", async () => 
 // --- Démarrage ---
 
 if (getToken()) {
-  afficherApp();
+  afficherApp(localStorage.getItem("pseudo"));
 } else {
   afficherLogin();
 }
+
