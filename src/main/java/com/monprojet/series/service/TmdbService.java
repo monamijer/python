@@ -4,6 +4,7 @@ package com.monprojet.series.service;
 import com.monprojet.series.dto.response.ActeurResponse;
 import com.monprojet.series.dto.response.GenreResponse;
 import com.monprojet.series.dto.response.MembreCastingResponse;
+import com.monprojet.series.dto.response.PageResponse;
 import com.monprojet.series.dto.response.TmdbSerieResponse;
 import com.monprojet.series.dto.tmdb.*;
 import com.monprojet.series.entity.Episode;
@@ -43,50 +44,63 @@ public class TmdbService {
     @Value("${tmdb.api.key}")
     private String apiKey;
 
-    // ---------- Discovery endpoints ----------
+    // ---------- Découverte paginée ----------
 
-    public List<TmdbSerieResponse> rechercherParTitre(String titre, Integer annee, String langue) {
-        TmdbPageResponse page = appeler(uri -> {
+    public PageResponse<TmdbSerieResponse> rechercherParTitre(String titre, Integer annee, String langue, int page) {
+        TmdbPageResponse reponse = appeler(uri -> {
             var b = uri.path("/search/tv")
                     .queryParam("api_key", apiKey)
                     .queryParam("language", langue != null ? langue : "fr-FR")
-                    .queryParam("query", titre);
+                    .queryParam("query", titre)
+                    .queryParam("page", page);
             if (annee != null) b.queryParam("first_air_date_year", annee);
             return b.build();
         }, TmdbPageResponse.class);
-        return versReponses(page);
+        return versPage(reponse);
     }
 
-    public List<TmdbSerieResponse> listerPopulaires(int page) {
+    public PageResponse<TmdbSerieResponse> listerPopulaires(int page) {
         return listerPage("/tv/popular", page);
     }
 
-    public List<TmdbSerieResponse> listerTendances() {
-        TmdbPageResponse page = appeler(uri -> uri.path("/trending/tv/week")
-                .queryParam("api_key", apiKey)
-                .queryParam("language", "fr-FR")
-                .build(), TmdbPageResponse.class);
-        return versReponses(page);
+    public PageResponse<TmdbSerieResponse> listerTendances(int page) {
+        return listerPage("/trending/tv/week", page);
     }
 
-    public List<TmdbSerieResponse> listerMieuxNotees() {
-        return listerPage("/tv/top_rated", 1);
+    public PageResponse<TmdbSerieResponse> listerMieuxNotees(int page) {
+        return listerPage("/tv/top_rated", page);
     }
 
     // TMDB has no direct "upcoming" concept for TV series (unlike movies);
     // "on_the_air" (currently airing new episodes) is the closest equivalent.
-    public List<TmdbSerieResponse> listerDiffuseesBientot() {
-        return listerPage("/tv/on_the_air", 1);
+    public PageResponse<TmdbSerieResponse> listerDiffuseesBientot(int page) {
+        return listerPage("/tv/on_the_air", page);
     }
 
-    private List<TmdbSerieResponse> listerPage(String chemin, int page) {
+    public PageResponse<TmdbSerieResponse> decouvrir(Long genreId, Integer annee, Double noteMin, int page) {
+        TmdbPageResponse reponse = appeler(uri -> {
+            var b = uri.path("/discover/tv")
+                    .queryParam("api_key", apiKey)
+                    .queryParam("language", "fr-FR")
+                    .queryParam("page", page);
+            if (genreId != null) b.queryParam("with_genres", genreId);
+            if (annee != null) b.queryParam("first_air_date_year", annee);
+            if (noteMin != null) b.queryParam("vote_average.gte", noteMin);
+            return b.build();
+        }, TmdbPageResponse.class);
+        return versPage(reponse);
+    }
+
+    private PageResponse<TmdbSerieResponse> listerPage(String chemin, int page) {
         TmdbPageResponse reponse = appeler(uri -> uri.path(chemin)
                 .queryParam("api_key", apiKey)
                 .queryParam("language", "fr-FR")
                 .queryParam("page", page)
                 .build(), TmdbPageResponse.class);
-        return versReponses(reponse);
+        return versPage(reponse);
     }
+
+    // ---------- Non paginé ----------
 
     public List<GenreResponse> listerGenres() {
         TmdbGenresWrapper wrapper = appeler(uri -> uri.path("/genre/tv/list")
@@ -95,21 +109,6 @@ public class TmdbService {
                 .build(), TmdbGenresWrapper.class);
         return wrapper.genres().stream().map(g -> new GenreResponse(g.id(), g.name())).toList();
     }
-
-    public List<TmdbSerieResponse> decouvrir(Long genreId, Integer annee, Double noteMin) {
-        TmdbPageResponse page = appeler(uri -> {
-            var b = uri.path("/discover/tv")
-                    .queryParam("api_key", apiKey)
-                    .queryParam("language", "fr-FR");
-            if (genreId != null) b.queryParam("with_genres", genreId);
-            if (annee != null) b.queryParam("first_air_date_year", annee);
-            if (noteMin != null) b.queryParam("vote_average.gte", noteMin);
-            return b.build();
-        }, TmdbPageResponse.class);
-        return versReponses(page);
-    }
-
-    // ---------- Single series ----------
 
     public TmdbSerieResponse obtenirDetail(Long tmdbId) {
         TmdbSerieDetailDto detail = recupererDetail(tmdbId);
@@ -146,7 +145,7 @@ public class TmdbService {
                 .toList();
     }
 
-    // ---------- Actors ----------
+    // ---------- Acteurs ----------
 
     public List<ActeurResponse> rechercherActeur(String nom) {
         TmdbActeurPageResponse page = appeler(uri -> uri.path("/search/person")
@@ -245,13 +244,23 @@ public class TmdbService {
         episodeRepository.saveAll(episodes);
     }
 
-    // ---------- Shared helpers ----------
+    // ---------- Helpers ----------
 
     private TmdbSerieDetailDto recupererDetail(Long tmdbId) {
         return appeler(uri -> uri.path("/tv/{id}")
                 .queryParam("api_key", apiKey)
                 .queryParam("language", "fr-FR")
                 .build(tmdbId), TmdbSerieDetailDto.class);
+    }
+
+    /** Convertit une réponse TMDB paginée en {@link PageResponse} pour le frontend. */
+    private PageResponse<TmdbSerieResponse> versPage(TmdbPageResponse page) {
+        return new PageResponse<>(
+                versReponses(page),
+                page.page(),
+                page.totalPages(),
+                page.totalResults()
+        );
     }
 
     private List<TmdbSerieResponse> versReponses(TmdbPageResponse page) {

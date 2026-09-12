@@ -2,11 +2,8 @@
 package com.monprojet.series.controller;
 
 import com.monprojet.series.dto.response.*;
-import com.monprojet.series.mapper.SerieMapper;
 import com.monprojet.series.service.TmdbService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,45 +15,55 @@ public class TmdbController {
 
     private final TmdbService tmdbService;
 
+    // ---------- Découverte paginée ----------
+
     @GetMapping("/recherche")
-    public List<TmdbSerieResponse> rechercher(
+    public PageResponse<TmdbSerieResponse> rechercher(
             @RequestParam String titre,
             @RequestParam(required = false) Integer annee,
-            @RequestParam(required = false) String langue) {
-        return tmdbService.rechercherParTitre(titre, annee, langue);
+            @RequestParam(required = false) String langue,
+            @RequestParam(defaultValue = "1") int page) {
+        return tmdbService.rechercherParTitre(titre, annee, langue, page);
     }
 
     @GetMapping("/populaires")
-    public List<TmdbSerieResponse> populaires(@RequestParam(defaultValue = "1") int page) {
+    public PageResponse<TmdbSerieResponse> populaires(
+            @RequestParam(defaultValue = "1") int page) {
         return tmdbService.listerPopulaires(page);
     }
 
     @GetMapping("/tendances")
-    public List<TmdbSerieResponse> tendances() {
-        return tmdbService.listerTendances();
+    public PageResponse<TmdbSerieResponse> tendances(
+            @RequestParam(defaultValue = "1") int page) {
+        return tmdbService.listerTendances(page);
     }
 
     @GetMapping("/mieux-notees")
-    public List<TmdbSerieResponse> mieuxNotees() {
-        return tmdbService.listerMieuxNotees();
+    public PageResponse<TmdbSerieResponse> mieuxNotees(
+            @RequestParam(defaultValue = "1") int page) {
+        return tmdbService.listerMieuxNotees(page);
     }
 
     @GetMapping("/diffusees-bientot")
-    public List<TmdbSerieResponse> diffuseesBientot() {
-        return tmdbService.listerDiffuseesBientot();
+    public PageResponse<TmdbSerieResponse> diffuseesBientot(
+            @RequestParam(defaultValue = "1") int page) {
+        return tmdbService.listerDiffuseesBientot(page);
     }
+
+    @GetMapping("/decouvrir")
+    public PageResponse<TmdbSerieResponse> decouvrir(
+            @RequestParam(required = false) Long genre,
+            @RequestParam(required = false) Integer annee,
+            @RequestParam(required = false) Double noteMin,
+            @RequestParam(defaultValue = "1") int page) {
+        return tmdbService.decouvrir(genre, annee, noteMin, page);
+    }
+
+    // ---------- Non paginé (petites listes) ----------
 
     @GetMapping("/genres")
     public List<GenreResponse> genres() {
         return tmdbService.listerGenres();
-    }
-
-    @GetMapping("/decouvrir")
-    public List<TmdbSerieResponse> decouvrir(
-            @RequestParam(required = false) Long genre,
-            @RequestParam(required = false) Integer annee,
-            @RequestParam(required = false) Double noteMin) {
-        return tmdbService.decouvrir(genre, annee, noteMin);
     }
 
     @GetMapping("/serie/{tmdbId}")
@@ -92,12 +99,5 @@ public class TmdbController {
     @GetMapping("/acteur/{acteurId}/series")
     public List<TmdbSerieResponse> seriesActeur(@PathVariable Long acteurId) {
         return tmdbService.listerSeriesActeur(acteurId);
-    }
-
-    // The only endpoint that mutates local data and requires ownership scoping
-    @PostMapping("/../utilisateurs/{userId}/tmdb/importer/{tmdbId}")
-    public ResponseEntity<SerieResponse> importer(@PathVariable Long userId, @PathVariable Long tmdbId) {
-        var serieImportee = tmdbService.importerSerie(userId, tmdbId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(SerieMapper.toResponse(serieImportee));
     }
 }
