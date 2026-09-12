@@ -62,7 +62,7 @@ public class VisionnageService {
             prochaineSaisonNumero = saisonRepository
                     .findBySerieIdAndNumero(saison.getSerie().getId(), saison.getNumero() + 1)
                     .map(Saison::getNumero)
-                    .orElse(null); // null = it was the last season of the series
+                    .orElse(null);
         }
 
         return new MarquerVisionnageResponse(episodeId, saisonTerminee, prochaineSaisonNumero);
@@ -85,8 +85,11 @@ public class VisionnageService {
                 .countByUtilisateur_IdAndEpisode_Saison_Serie_Id(utilisateurId, serieId);
         long episodesTotal = episodeRepository.countBySaison_Serie_Id(serieId);
 
+        // Pas d'épisodes enregistrés → réponse neutre au lieu d'un 404.
         if (episodesTotal == 0) {
-            throw new ResourceNotFoundException("Cette série n'a aucun épisode enregistré : id=" + serieId);
+            return new ProgressionResponse(
+                    serieId, "", 0, 0, 0.0, 0L, 0L, StatutProgression.A_COMMENCER
+            );
         }
 
         double pourcentage = (episodesVus * 100.0) / episodesTotal;
@@ -96,7 +99,6 @@ public class VisionnageService {
 
         StatutProgression statut = resoudreStatut(pourcentage);
 
-        // titre is fetched lazily only for the response; avoids loading the full Serie graph
         String titre = episodeRepository.findBySaison_Serie_IdOrderBySaison_NumeroAscNumeroAsc(serieId)
                 .stream().findFirst()
                 .map(e -> e.getSaison().getSerie().getTitre())
