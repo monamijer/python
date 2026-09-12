@@ -19,15 +19,15 @@ public class SaisonController {
 
     private final SaisonService saisonService;
 
-    @GetMapping("/api/series/{serieId}/saisons")
-    public List<SaisonResponse> listerParSerie(@PathVariable Long serieId) {
-        return saisonService.listerParSerie(serieId).stream().map(SaisonMapper::toResponse).toList();
+    @GetMapping("/api/utilisateurs/{userId}/series/{serieId}/saisons")
+    public List<SaisonResponse> listerParSerie(@PathVariable Long userId, @PathVariable Long serieId) {
+        return saisonService.listerParSerie(serieId, userId).stream().map(SaisonMapper::toResponse).toList();
     }
 
-    @PostMapping("/api/series/{serieId}/saisons")
+    @PostMapping("/api/utilisateurs/{userId}/series/{serieId}/saisons")
     public ResponseEntity<SaisonResponse> creer(
-            @PathVariable Long serieId, @Valid @RequestBody SaisonRequest request) {
-        var creee = saisonService.creer(serieId, SaisonMapper.toEntity(request));
+            @PathVariable Long userId, @PathVariable Long serieId, @Valid @RequestBody SaisonRequest request) {
+        var creee = saisonService.creer(serieId, userId, SaisonMapper.toEntity(request));
         return ResponseEntity.status(HttpStatus.CREATED).body(SaisonMapper.toResponse(creee));
     }
 }

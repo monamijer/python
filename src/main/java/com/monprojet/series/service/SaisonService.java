@@ -21,8 +21,10 @@ public class SaisonService {
     private final SerieService serieService;
 
     @Transactional(readOnly = true)
-    public List<Saison> listerParSerie(Long serieId) {
-        serieService.obtenirParId(serieId); // 404 if the series doesn't exist
+    public List<Saison> listerParSerie(Long serieId, Long utilisateurId) {
+        // Throws 404 if the series doesn't exist OR doesn't belong to this user —
+        // this is what actually enforces ownership on season listing.
+        serieService.obtenirParId(serieId, utilisateurId);
         return saisonRepository.findBySerieIdOrderByNumeroAsc(serieId);
     }
 
@@ -37,8 +39,8 @@ public class SaisonService {
         return saisonRepository.findBySerieIdAndNumero(serieId, numero);
     }
 
-    public Saison creer(Long serieId, Saison saison) {
-        Serie serie = serieService.obtenirParId(serieId);
+    public Saison creer(Long serieId, Long utilisateurId, Saison saison) {
+        Serie serie = serieService.obtenirParId(serieId, utilisateurId);
         saison.setSerie(serie);
         return saisonRepository.save(saison);
     }
