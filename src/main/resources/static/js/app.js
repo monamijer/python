@@ -2,7 +2,36 @@
 // Vanilla JS, no build step — fetch() against the same-origin Spring Boot API.
 
 const API = "/api";
-const UTILISATEUR_ID = 1;
+
+// --- Auth / session storage ---
+
+function getToken() {
+  return localStorage.getItem("token");
+}
+
+function getUtilisateurId() {
+  return localStorage.getItem("utilisateurId");
+}
+
+function getPseudo() {
+  return localStorage.getItem("pseudo");
+}
+
+// Single place that writes everything the session needs after login/register
+function setSession(token, utilisateurId, pseudo) {
+  localStorage.setItem("token", token);
+  localStorage.setItem("utilisateurId", utilisateurId);
+  localStorage.setItem("pseudo", pseudo);
+}
+
+function deconnexion() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("utilisateurId");
+  localStorage.removeItem("pseudo");
+  location.reload();
+}
+
+// --- Auth tabs (login / inscription) ---
 
 document.querySelectorAll(".auth-tab").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -14,31 +43,7 @@ document.querySelectorAll(".auth-tab").forEach((btn) => {
   });
 });
 
-// --- Auth ---
-
-function getToken() {
-  return localStorage.getItem("token");
-}
-
-function setSession(data.token, data.utilisateurId) {
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("utilisateurId", data.utilisateurId);
-}
-
-function getUtilisateurId() {
-  return localStorage.getItem("utilisateurId");
-}
-
-function setToken(token) {
-  localStorage.setItem("token", token);
-}
-
-function deconnexion() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("utilisateurId");
-  location.reload();
-}
-// --- Utilitaires ---
+// --- Generic API call wrapper ---
 
 async function appelApi(url, options = {}) {
   const token = getToken();
@@ -48,10 +53,9 @@ async function appelApi(url, options = {}) {
   const reponse = await fetch(url, { headers, ...options });
 
   if (reponse.status === 401 || reponse.status === 403) {
-    // Token absent/expiré → on force le login
+    // Missing/expired token → force back to login, unless this WAS the login/register call
     if (!url.includes("/auth/")) {
-      localStorage.removeItem("token");
-      afficherLogin();
+      deconnexion();
     }
     throw new Error("Non authentifié");
   }
@@ -92,8 +96,7 @@ document.getElementById("form-connexion").addEventListener("submit", async (e) =
       method: "POST",
       body: JSON.stringify({ email, motDePasse }),
     });
-        setToken(data.token);
-    localStorage.setItem("pseudo", data.pseudo);
+    setSession(data.token, data.utilisateurId, data.pseudo);
     afficherApp(data.pseudo);
   } catch (err) {
     document.getElementById("login-erreur").textContent = "Identifiants invalides";
@@ -110,8 +113,7 @@ document.getElementById("form-inscription").addEventListener("submit", async (e)
       method: "POST",
       body: JSON.stringify({ pseudo, email, motDePasse }),
     });
-        setToken(data.token);
-    localStorage.setItem("pseudo", data.pseudo);
+    setSession(data.token, data.utilisateurId, data.pseudo);
     afficherApp(data.pseudo);
   } catch (err) {
     document.getElementById("login-erreur").textContent = err.message;
@@ -120,7 +122,7 @@ document.getElementById("form-inscription").addEventListener("submit", async (e)
 
 document.getElementById("btn-deconnexion")?.addEventListener("click", deconnexion);
 
-// --- Onglets ---
+// --- Tabs ---
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -139,7 +141,7 @@ async function chargerMesSeries() {
 
   let series;
   try {
-    series = await appelApi(`${API}/series`);
+    series = await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series`);
   } catch (err) {
     conteneur.innerHTML = `<p>Erreur : ${err.message}</p>`;
     return;
@@ -149,8 +151,10 @@ async function chargerMesSeries() {
   for (const serie of series) {
     let progression = null;
     try {
-      progression = await appelApi(`${API}/utilisateurs/${UTILISATEUR_ID}/progression/${serie.id}`);
-    } catch { /* pas de progression */ }
+      progression = await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/progression/${serie.id}`);
+    } catch {
+      // No watch data yet for this series — not an error, just skip the progress bar
+    }
 
     const carte = creerElement(`
       <div class="serie-card" data-id="${serie.id}">
@@ -172,7 +176,7 @@ async function chargerMesSeries() {
     carte.querySelector(".btn-supprimer").addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`Supprimer "${serie.titre}" ?`)) return;
-      await appelApi(`${API}/series/${serie.id}`, { method: "DELETE" });
+      await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series/${serie.id}`, { method: "DELETE" });
       chargerMesSeries();
     });
 
@@ -185,7 +189,7 @@ document.getElementById("form-ajout-serie").addEventListener("submit", async (e)
   e.preventDefault();
   const titre = document.getElementById("input-titre").value;
   const genre = document.getElementById("input-genre").value;
-  await appelApi(`${API}/series`, {
+  await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series`, {
     method: "POST",
     body: JSON.stringify({ titre, genre }),
   });
@@ -193,7 +197,7 @@ document.getElementById("form-ajout-serie").addEventListener("submit", async (e)
   chargerMesSeries();
 });
 
-// --- Detail serie ---
+// --- Detail serie: seasons, episodes, progress ---
 
 async function ouvrirDetailSerie(serie) {
   const panneau = document.getElementById("panneau-detail");
@@ -201,7 +205,7 @@ async function ouvrirDetailSerie(serie) {
   contenu.innerHTML = `<h2>${serie.titre}</h2><p>Chargement...</p>`;
   panneau.classList.remove("hidden");
 
-  const saisons = await appelApi(`${API}/series/${serie.id}/saisons`);
+  const saisons = await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series/${serie.id}/saisons`);
 
   let html = `<h2>${serie.titre}</h2>`;
   for (const saison of saisons) {
@@ -224,10 +228,10 @@ async function ouvrirDetailSerie(serie) {
       const ligne = e.target.closest(".episode-ligne");
       try {
         if (e.target.checked) {
-          await appelApi(`${API}/utilisateurs/${UTILISATEUR_ID}/visionnages/${episodeId}`, { method: "POST" });
+          await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/visionnages/${episodeId}`, { method: "POST" });
           ligne.classList.add("vu");
         } else {
-          await appelApi(`${API}/utilisateurs/${UTILISATEUR_ID}/visionnages/${episodeId}`, { method: "DELETE" });
+          await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/visionnages/${episodeId}`, { method: "DELETE" });
           ligne.classList.remove("vu");
         }
       } catch (err) {
@@ -243,7 +247,7 @@ document.getElementById("btn-fermer-panneau").addEventListener("click", () => {
   chargerMesSeries();
 });
 
-// --- TMDB ---
+// --- TMDB discovery ---
 
 function afficherResultatsTmdb(series) {
   const conteneur = document.getElementById("resultats-tmdb");
@@ -267,7 +271,7 @@ function afficherResultatsTmdb(series) {
       btn.disabled = true;
       btn.textContent = "Import...";
       try {
-        await appelApi(`${API}/tmdb/importer/${serie.tmdbId}`, { method: "POST" });
+        await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/tmdb/importer/${serie.tmdbId}`, { method: "POST" });
         btn.textContent = "Importé ✓";
       } catch (err) {
         alert(err.message);
@@ -293,11 +297,10 @@ document.getElementById("btn-populaires").addEventListener("click", async () => 
   afficherResultatsTmdb(resultats);
 });
 
-// --- Démarrage ---
+// --- Startup ---
 
 if (getToken()) {
-  afficherApp(localStorage.getItem("pseudo"));
+  afficherApp(getPseudo());
 } else {
   afficherLogin();
 }
-
