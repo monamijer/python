@@ -61,7 +61,7 @@
         <h1>📺 Series TV</h1>
         <div class="header-user">
           <span id="nom-utilisateur"></span>
-          <button id="btn-deconnexion" class="btn-deconnexion">Déconnexion</button>
+          <button id="btn-deconnexion" class="btn-deconnexion" type="button">Déconnexion</button>
         </div>
       </div>
       <nav class="tabs" role="tablist" aria-label="Sections principales">
@@ -77,83 +77,98 @@
     </header>
 
     <main>
-      <section id="mes-series" class="tab-panel active" role="tabpanel" aria-labelledby="onglet-mes-series">
-  <form id="form-ajout-serie" class="card form-inline">
-    <label for="input-titre" class="sr-only">Titre de la série</label>
-    <input type="text" id="input-titre" placeholder="Titre de la série" required>
+      <!-- ===== MES SÉRIES ===== -->
+      <section id="mes-series" class="tab-panel active" role="tabpanel"
+               aria-labelledby="onglet-mes-series" tabindex="0">
 
-    <label for="input-genre" class="sr-only">Genre</label>
-    <input type="text" id="input-genre" placeholder="Genre">
+        <form id="form-ajout-serie" class="card form-inline">
+          <label for="input-titre" class="sr-only">Titre de la série</label>
+          <input type="text" id="input-titre" placeholder="Titre de la série" required>
 
-    <button type="submit">Ajouter</button>
-  </form>
+          <label for="input-genre" class="sr-only">Genre</label>
+          <input type="text" id="input-genre" placeholder="Genre">
 
-  <div class="card form-inline">
-    <label for="select-tri" class="sr-only">Trier par</label>
-    <select id="select-tri">
-      <option value="titre-asc">Titre (A→Z)</option>
-      <option value="titre-desc">Titre (Z→A)</option>
-      <option value="annee-desc">Année (récente)</option>
-      <option value="annee-asc">Année (ancienne)</option>
-      <option value="note-desc">Note (meilleure)</option>
-      <option value="progression-desc">Progression (élevée)</option>
-    </select>
+          <button type="submit">Ajouter</button>
+        </form>
 
-    <label for="input-filtre-genre" class="sr-only">Filtrer par genre</label>
-    <input type="text" id="input-filtre-genre" placeholder="Filtrer par genre...">
-  </div>
+        <div class="card form-inline">
+          <label for="select-tri" class="sr-only">Trier par</label>
+          <select id="select-tri">
+            <option value="titre-asc">Titre (A→Z)</option>
+            <option value="titre-desc">Titre (Z→A)</option>
+            <option value="annee-desc">Année (récente)</option>
+            <option value="annee-asc">Année (ancienne)</option>
+            <option value="note-desc">Note (meilleure)</option>
+            <option value="progression-desc">Progression (élevée)</option>
+          </select>
 
-  <div id="liste-series" class="grid" aria-live="polite"></div>
-</section>
+          <label for="input-filtre-genre" class="sr-only">Filtrer par genre</label>
+          <input type="text" id="input-filtre-genre" placeholder="Filtrer par genre...">
+        </div>
 
-<section id="decouvrir" class="tab-panel" role="tabpanel" aria-labelledby="onglet-decouvrir" hidden>
-  <div class="sous-nav" role="group" aria-label="Catégories de séries">
-    <button type="button" class="souscat-btn active" data-cat="populaires">Populaires</button>
-    <button type="button" class="souscat-btn" data-cat="tendances">Tendances</button>
-    <button type="button" class="souscat-btn" data-cat="mieux-notees">Mieux notées</button>
-    <button type="button" class="souscat-btn" data-cat="diffusees-bientot">Bientôt</button>
-  </div>
+        <div id="liste-series" class="grid" aria-live="polite"></div>
+      </section>
 
-  <form id="form-recherche-tmdb" class="card form-inline">
-    <label for="input-recherche" class="sr-only">Rechercher une série</label>
-    <input type="text" id="input-recherche" placeholder="Rechercher une série...">
-    <button type="submit">Rechercher</button>
-  </form>
+      <section id="decouvrir" class="tab-panel" role="tabpanel"
+               aria-labelledby="onglet-decouvrir" tabindex="0" hidden>
 
-  <form id="form-decouvrir" class="card form-inline">
-    <label for="select-genre" class="sr-only">Genre</label>
-    <select id="select-genre">
-      <option value="">Tous les genres</option>
-    </select>
+        <!-- 1. Recherche par acteur EN PREMIER -->
+        <form id="form-recherche-acteur" class="card form-inline">
+          <label for="input-acteur" class="sr-only">Rechercher un acteur</label>
+          <input type="text" id="input-acteur" placeholder="Rechercher un acteur...">
+          <button type="submit">Rechercher</button>
+        </form>
 
-    <label for="input-annee" class="sr-only">Année</label>
-    <input type="number" id="input-annee" placeholder="Année" min="1900" max="2100">
+        <div id="resultats-acteurs" class="grid" aria-live="polite"></div>
 
-    <label for="input-note-min" class="sr-only">Note minimale</label>
-    <input type="number" id="input-note-min" placeholder="Note min." min="0" max="10" step="0.5">
+        <!-- 2. Sous-catégories -->
+        <div class="sous-nav" role="group" aria-label="Catégories de séries">
+          <button type="button" class="souscat-btn" data-cat="populaires">Populaires</button>
+          <button type="button" class="souscat-btn" data-cat="tendances">Tendances</button>
+          <button type="button" class="souscat-btn" data-cat="mieux-notees">Mieux notées</button>
+          <button type="button" class="souscat-btn" data-cat="diffusees-bientot">Bientôt</button>
+        </div>
 
-    <button type="submit">Filtrer</button>
-  </form>
+        <!-- 3. Recherche par titre -->
+        <form id="form-recherche-tmdb" class="card form-inline">
+          <label for="input-recherche" class="sr-only">Rechercher une série</label>
+          <input type="text" id="input-recherche" placeholder="Rechercher une série...">
+          <button type="submit">Rechercher</button>
+        </form>
 
-  <div id="resultats-tmdb" class="grid" aria-live="polite"></div>
+        <!-- 4. Découverte avancée -->
+        <form id="form-decouvrir" class="card form-inline">
+          <label for="select-genre" class="sr-only">Genre</label>
+          <select id="select-genre">
+            <option value="">Tous les genres</option>
+          </select>
 
-  <hr>
+          <label for="input-annee" class="sr-only">Année</label>
+          <input type="number" id="input-annee" placeholder="Année" min="1900" max="2100">
 
-  <form id="form-recherche-acteur" class="card form-inline">
-    <label for="input-acteur" class="sr-only">Rechercher un acteur</label>
-    <input type="text" id="input-acteur" placeholder="Rechercher un acteur...">
-    <button type="submit">Rechercher</button>
-  </form>
+          <label for="input-note-min" class="sr-only">Note minimale</label>
+          <input type="number" id="input-note-min" placeholder="Note min." min="0" max="10" step="0.5">
 
-  <div id="resultats-acteurs" class="grid" aria-live="polite"></div>
-</section>
-    </main>
+          <button type="submit">Filtrer</button>
+        </form>
 
-    <!-- Modal: hidden by default, JS adds/removes aria-hidden and manages focus -->
+        <!-- 5. Résultats + pagination -->
+        <div id="resultats-tmdb" class="grid" aria-live="polite"></div>
+
+        <nav id="pagination-tmdb" class="pagination hidden" aria-label="Pagination des résultats">
+          <button type="button" id="btn-page-prec" class="btn-page">← Précédent</button>
+          <span id="info-page" class="info-page" aria-live="polite">Page 1 / 1</span>
+          <button type="button" id="btn-page-suiv" class="btn-page">Suivant →</button>
+        </nav>
+      </section>
+        </main>
+
+    <!-- Modal: aria-hidden retiré, remplacé par inert/class .hidden -->
     <div id="panneau-detail" class="panneau-detail hidden"
-         role="dialog" aria-modal="true" aria-labelledby="titre-detail" aria-hidden="true">
+         role="dialog" aria-modal="true" aria-labelledby="titre-detail">
       <div class="panneau-contenu">
-        <button id="btn-fermer-panneau" class="btn-fermer" aria-label="Fermer la fenêtre de détail">&times;</button>
+        <button id="btn-fermer-panneau" class="btn-fermer"
+                aria-label="Fermer la fenêtre de détail">&times;</button>
         <div id="detail-contenu"></div>
       </div>
     </div>

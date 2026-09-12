@@ -3,8 +3,8 @@
 
 const API = "/api";
 
-// A tiny inline SVG used whenever a series/actor has no image — avoids a
-// broken-image icon and gives screen readers something meaningful via alt text.
+// SVG placeholder used when a series/actor has no image.
+// Note: contains no single quotes so it's safe inside HTML attributes.
 const IMAGE_PLACEHOLDER =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='300'%3E" +
   "%3Crect width='200' height='300' fill='%23ddd'/%3E" +
@@ -73,10 +73,23 @@ function creerElement(html) {
   return conteneur.firstElementChild;
 }
 
-// Shared empty-state renderer — every list in the app uses this instead of
-// silently rendering nothing, per the "no silent empty state" requirement.
+// Attaches a fallback placeholder to an <img> element (avoids inline onerror + quote issues).
+function attacherPlaceholder(img) {
+  if (!img) return;
+  img.addEventListener("error", () => {
+    img.src = IMAGE_PLACEHOLDER;
+  }, { once: true });
+}
+
+// Shared empty-state / loading / error renderers
 function messageVide(texte) {
   return `<p class="aucun-resultat" role="status">${texte}</p>`;
+}
+function messageChargement(texte = "Chargement...") {
+  return `<p class="chargement" role="status">${texte}</p>`;
+}
+function messageErreur(texte) {
+  return `<p class="erreur-api" role="alert">Erreur : ${texte}</p>`;
 }
 
 // --- Login / Inscription ---
@@ -129,7 +142,9 @@ document.getElementById("form-inscription").addEventListener("submit", async (e)
 
 document.getElementById("btn-deconnexion")?.addEventListener("click", deconnexion);
 
-// --- Main tabs ---
+// --- Main tabs (load content lazily) ---
+
+let ongletDecouvrirCharge = false;
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -137,31 +152,46 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
       b.classList.remove("active");
       b.setAttribute("aria-selected", "false");
     });
-    document.querySelectorAll(".tab-panel").forEach((p) => p.setAttribute("hidden", ""));
+    document.querySelectorAll(".tab-panel").forEach((p) => {
+      p.classList.remove("active");
+      p.setAttribute("hidden", "");
+    });
+
     btn.classList.add("active");
     btn.setAttribute("aria-selected", "true");
-    document.getElementById(btn.dataset.tab).removeAttribute("hidden");
+
+    const panneau = document.getElementById(btn.dataset.tab);
+    panneau.classList.add("active");
+    panneau.removeAttribute("hidden");
+
+    // Load "Populaires" the first time the user opens the Discover tab.
+    if (btn.dataset.tab === "decouvrir" && !ongletDecouvrirCharge) {
+      ongletDecouvrirCharge = true;
+      chargerCategorieTmdb("populaires", document.querySelector(".souscat-btn[data-cat='populaires']"));
+    }
   });
 });
 
 // --- My series: load, sort, filter ---
 
-let seriesEnMemoire = []; // cache of {serie, progression} so sort/filter don't refetch
+let seriesEnMemoire = [];
 
 async function chargerMesSeries() {
   const conteneur = document.getElementById("liste-series");
-  conteneur.innerHTML = "<p>Chargement...</p>";
+  conteneur.innerHTML = messageChargement();
 
   let series;
   try {
     series = await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series`);
   } catch (err) {
-    conteneur.innerHTML = `<p>Erreur : ${err.message}</p>`;
+    conteneur.innerHTML = messageErreur(err.message);
     return;
   }
 
-  if (series.length === 0) {
-    conteneur.innerHTML = messageVide("Aucune série dans votre liste pour l'instant. Ajoutez-en une ci-dessus ou explorez l'onglet Découvrir.");
+  if (!series || series.length === 0) {
+    conteneur.innerHTML = messageVide(
+      "Aucune série dans votre liste pour l'instant. Ajoutez-en une ci-dessus ou explorez l'onglet Découvrir."
+    );
     seriesEnMemoire = [];
     return;
   }
@@ -171,9 +201,7 @@ async function chargerMesSeries() {
     let progression = null;
     try {
       progression = await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/progression/${serie.id}`);
-    } catch {
-      // No watch data yet for this series — not an error, progress bar just won't show
-    }
+    } catch { /* no watch data yet, progress bar just won't show */ }
     seriesEnMemoire.push({ serie, progression });
   }
 
@@ -199,7 +227,6 @@ function trierEtFiltrerSeries() {
     "progression-desc": (a, b) => (b.progression?.pourcentage || 0) - (a.progression?.pourcentage || 0),
   };
   liste.sort(comparateurs[tri] || comparateurs["titre-asc"]);
-
   return liste;
 }
 
@@ -216,8 +243,7 @@ function rendreMesSeries() {
   for (const { serie, progression } of liste) {
     const carte = creerElement(`
       <div class="serie-card" data-id="${serie.id}">
-        <img src="${serie.imageUrl || IMAGE_PLACEHOLDER}" alt="Affiche de ${serie.titre}"
-             onerror="this.src='${IMAGE_PLACEHOLDER}'">
+        <img src="${serie.imageUrl || IMAGE_PLACEHOLDER}" alt="Affiche de ${serie.titre}">
         <div class="contenu">
           <h3>${serie.titre}</h3>
           <span class="meta">${serie.genre || ''} ${serie.anneeSortie ? '· ' + serie.anneeSortie : ''}</span>
@@ -227,16 +253,30 @@ function rendreMesSeries() {
             </div>
             <span class="meta">${progression.episodesVus}/${progression.episodesTotal} épisodes</span>
           ` : ''}
-          <button class="btn-supprimer" data-id="${serie.id}">Supprimer</button>
+          <div class="actions-carte">
+            <button class="btn-editer" data-id="${serie.id}" data-action="editer">Éditer</button>
+            <button class="btn-supprimer" data-id="${serie.id}" data-action="supprimer">Supprimer</button>
+          </div>
         </div>
       </div>
     `);
 
-    carte.querySelector(".btn-supprimer").addEventListener("click", async (e) => {
+    attacherPlaceholder(carte.querySelector("img"));
+
+    carte.querySelector('[data-action="supprimer"]').addEventListener("click", async (e) => {
       e.stopPropagation();
       if (!confirm(`Supprimer "${serie.titre}" ?`)) return;
-      await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series/${serie.id}`, { method: "DELETE" });
-      chargerMesSeries();
+      try {
+        await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series/${serie.id}`, { method: "DELETE" });
+        chargerMesSeries();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    carte.querySelector('[data-action="editer"]').addEventListener("click", (e) => {
+      e.stopPropagation();
+      ouvrirEditionSerie(serie);
     });
 
     carte.addEventListener("click", () => ouvrirDetailSerie(serie));
@@ -251,13 +291,66 @@ document.getElementById("form-ajout-serie").addEventListener("submit", async (e)
   e.preventDefault();
   const titre = document.getElementById("input-titre").value;
   const genre = document.getElementById("input-genre").value;
-  await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series`, {
-    method: "POST",
-    body: JSON.stringify({ titre, genre }),
-  });
-  e.target.reset();
-  chargerMesSeries();
+  try {
+    await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series`, {
+      method: "POST",
+      body: JSON.stringify({ titre, genre }),
+    });
+    e.target.reset();
+    chargerMesSeries();
+  } catch (err) {
+    alert(err.message);
+  }
 });
+
+// --- Edition modal ---
+
+function ouvrirEditionSerie(serie) {
+  const contenu = document.getElementById("detail-contenu");
+  contenu.innerHTML = `
+    <h2 id="titre-detail">Éditer « ${serie.titre} »</h2>
+    <form id="form-edition-serie" class="form-inline">
+      <label for="edit-titre" class="sr-only">Titre</label>
+      <input id="edit-titre" type="text" value="${serie.titre || ''}" required>
+
+      <label for="edit-genre" class="sr-only">Genre</label>
+      <input id="edit-genre" type="text" value="${serie.genre || ''}" placeholder="Genre">
+
+      <label for="edit-annee" class="sr-only">Année</label>
+      <input id="edit-annee" type="number" value="${serie.anneeSortie || ''}" placeholder="Année" min="1900" max="2100">
+
+      <label for="edit-note" class="sr-only">Note</label>
+      <input id="edit-note" type="number" value="${serie.note ?? ''}" placeholder="Note" min="0" max="10" step="0.1">
+
+      <label for="edit-image" class="sr-only">URL de l'image</label>
+      <input id="edit-image" type="url" value="${serie.imageUrl || ''}" placeholder="URL de l'affiche">
+
+      <button type="submit">Enregistrer</button>
+    </form>
+  `;
+  ouvrirModale();
+
+  document.getElementById("form-edition-serie").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const body = {
+      titre: document.getElementById("edit-titre").value,
+      genre: document.getElementById("edit-genre").value || null,
+      anneeSortie: document.getElementById("edit-annee").value || null,
+      note: document.getElementById("edit-note").value || null,
+      imageUrl: document.getElementById("edit-image").value || null,
+    };
+    try {
+      await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series/${serie.id}`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      });
+      fermerModale();
+      chargerMesSeries();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+}
 
 // --- Detail panel (accessible modal) ---
 
@@ -267,7 +360,7 @@ function ouvrirModale() {
   const panneau = document.getElementById("panneau-detail");
   elementDeclencheur = document.activeElement;
   panneau.classList.remove("hidden");
-  panneau.setAttribute("aria-hidden", "false");
+  panneau.removeAttribute("inert");
   document.body.style.overflow = "hidden";
   const premierFocusable = panneau.querySelector("button, [href], input, select, textarea, [tabindex]");
   premierFocusable?.focus();
@@ -277,7 +370,7 @@ function ouvrirModale() {
 function fermerModale() {
   const panneau = document.getElementById("panneau-detail");
   panneau.classList.add("hidden");
-  panneau.setAttribute("aria-hidden", "true");
+  panneau.setAttribute("inert", "");
   document.body.style.overflow = "";
   document.removeEventListener("keydown", gererClavierModale);
   elementDeclencheur?.focus();
@@ -287,7 +380,10 @@ function gererClavierModale(e) {
   const panneau = document.getElementById("panneau-detail");
   if (e.key === "Escape") { fermerModale(); return; }
   if (e.key === "Tab") {
-    const focusables = panneau.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const focusables = panneau.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusables.length === 0) return;
     const premier = focusables[0];
     const dernier = focusables[focusables.length - 1];
     if (e.shiftKey && document.activeElement === premier) { e.preventDefault(); dernier.focus(); }
@@ -301,21 +397,32 @@ document.getElementById("panneau-detail").addEventListener("click", (e) => {
 
 async function ouvrirDetailSerie(serie) {
   const contenu = document.getElementById("detail-contenu");
-  contenu.innerHTML = `<h2 id="titre-detail">${serie.titre}</h2><p>Chargement...</p>`;
+  contenu.innerHTML = `<h2 id="titre-detail">${serie.titre}</h2>` + messageChargement();
   ouvrirModale();
 
-  const saisons = await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series/${serie.id}/saisons`);
+  let saisons;
+  try {
+    saisons = await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/series/${serie.id}/saisons`);
+  } catch (err) {
+    contenu.innerHTML = `<h2 id="titre-detail">${serie.titre}</h2>` + messageErreur(err.message);
+    return;
+  }
 
-  if (saisons.length === 0) {
-    contenu.innerHTML = `<h2 id="titre-detail">${serie.titre}</h2>` + messageVide("Aucune saison enregistrée pour cette série.");
+  if (!saisons || saisons.length === 0) {
+    contenu.innerHTML = `<h2 id="titre-detail">${serie.titre}</h2>`
+      + messageVide("Aucune saison enregistrée pour cette série.");
     return;
   }
 
   let html = `<h2 id="titre-detail">${serie.titre}</h2>`;
   for (const saison of saisons) {
-    const episodes = await appelApi(`${API}/saisons/${saison.id}/episodes`);
+    let episodes = [];
+    try {
+      episodes = await appelApi(`${API}/saisons/${saison.id}/episodes`);
+    } catch { /* leave empty */ }
+
     html += `<h3>Saison ${saison.numero}</h3>`;
-    if (episodes.length === 0) {
+    if (!episodes || episodes.length === 0) {
       html += messageVide("Aucun épisode enregistré pour cette saison.");
       continue;
     }
@@ -356,10 +463,30 @@ document.getElementById("btn-fermer-panneau").addEventListener("click", () => {
   chargerMesSeries();
 });
 
-// --- TMDB discovery ---
+/// --- TMDB discovery (avec pagination) ---
 
-function afficherResultatsTmdb(series, conteneurId = "resultats-tmdb") {
+// État de la requête TMDB courante pour permettre la pagination
+let requeteTmdbCourante = null; // { type: 'categorie'|'recherche'|'decouvrir', params: {...}, page: number }
+
+function afficherPagination(page, totalPages) {
+  const nav = document.getElementById("pagination-tmdb");
+  if (!totalPages || totalPages <= 1) {
+    nav.classList.add("hidden");
+    return;
+  }
+  nav.classList.remove("hidden");
+  document.getElementById("info-page").textContent = `Page ${page} / ${totalPages}`;
+  document.getElementById("btn-page-prec").disabled = page <= 1;
+  document.getElementById("btn-page-suiv").disabled = page >= totalPages;
+}
+
+function cacherPagination() {
+  document.getElementById("pagination-tmdb").classList.add("hidden");
+}
+
+function afficherResultatsTmdb(series, conteneurId = "resultats-tmdb", options = {}) {
   const conteneur = document.getElementById(conteneurId);
+  const { avecImport = true } = options;
 
   if (!series || series.length === 0) {
     conteneur.innerHTML = messageVide("Aucun résultat pour cette recherche.");
@@ -368,87 +495,176 @@ function afficherResultatsTmdb(series, conteneurId = "resultats-tmdb") {
 
   conteneur.innerHTML = "";
   for (const serie of series) {
+    const boutonImport = avecImport
+      ? `<button class="btn-importer" data-tmdb-id="${serie.tmdbId}">Importer</button>`
+      : "";
     const carte = creerElement(`
       <div class="serie-card">
-        <img src="${serie.imageUrl || IMAGE_PLACEHOLDER}" alt="Affiche de ${serie.titre}"
-             onerror="this.src='${IMAGE_PLACEHOLDER}'">
+        <img src="${serie.imageUrl || IMAGE_PLACEHOLDER}" alt="Affiche de ${serie.titre}">
         <div class="contenu">
           <h3>${serie.titre}</h3>
           <span class="meta">${serie.dateDiffusion || 'Date inconnue'} · ⭐ ${serie.note?.toFixed(1) || '?'}</span>
-          <button class="btn-importer" data-tmdb-id="${serie.tmdbId}">Importer</button>
+          ${boutonImport}
         </div>
       </div>
     `);
+    attacherPlaceholder(carte.querySelector("img"));
 
-    carte.querySelector(".btn-importer").addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const btn = e.target;
-      btn.disabled = true;
-      btn.textContent = "Import...";
-      try {
-        await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/tmdb/importer/${serie.tmdbId}`, { method: "POST" });
-        btn.textContent = "Importé ✓";
-      } catch (err) {
-        alert(err.message);
-        btn.disabled = false;
-        btn.textContent = "Importer";
-      }
-    });
+    if (avecImport) {
+      carte.querySelector(".btn-importer").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const btn = e.target;
+        btn.disabled = true;
+        btn.textContent = "Import...";
+        try {
+          await appelApi(`${API}/utilisateurs/${getUtilisateurId()}/tmdb/importer/${serie.tmdbId}`, { method: "POST" });
+          btn.textContent = "Importé ✓";
+        } catch (err) {
+          alert(err.message);
+          btn.disabled = false;
+          btn.textContent = "Importer";
+        }
+      });
+    }
 
     conteneur.appendChild(carte);
   }
 }
 
-// Sub-category buttons: Populaires / Tendances / Mieux notées / Bientôt
+// Construit l'URL à partir de la requête courante + une page
+function construireUrlTmdb(requete, page) {
+  const p = new URLSearchParams(requete.params || {});
+  p.set("page", page);
+
+  switch (requete.type) {
+    case "categorie": return `${API}/tmdb/${requete.categorie}?${p.toString()}`;
+    case "recherche": return `${API}/tmdb/recherche?${p.toString()}`;
+    case "decouvrir": return `${API}/tmdb/decouvrir?${p.toString()}`;
+  }
+  return null;
+}
+
+// Charge une page de résultats TMDB et met à jour la pagination.
+// `reponse` peut être :
+//   - un tableau (pas de pagination côté backend → on cache les boutons)
+//   - un objet { resultats, page, totalPages } (pagination active)
+async function chargerTmdb(url, requete) {
+  const conteneur = document.getElementById("resultats-tmdb");
+  conteneur.innerHTML = messageChargement();
+  cacherPagination();
+
+  let reponse;
+  try {
+    reponse = await appelApi(url);
+  } catch (err) {
+    conteneur.innerHTML = messageErreur(err.message);
+    return;
+  }
+
+  // Backend renvoie un tableau simple : pas de pagination
+  if (Array.isArray(reponse)) {
+    afficherResultatsTmdb(reponse);
+    return;
+  }
+
+  // Backend renvoie un objet paginé
+  requeteTmdbCourante = { ...requete, page: reponse.page };
+  afficherResultatsTmdb(reponse.resultats);
+  afficherPagination(reponse.page, reponse.totalPages);
+}
+
+// Map catégorie → endpoint backend
+const ROUTES_TMDB = {
+  populaires: "populaires",
+  tendances: "tendances",
+  "mieux-notees": "mieux-notees",
+  "diffusees-bientot": "diffusees-bientot",
+};
+
+async function chargerCategorieTmdb(cat, bouton) {
+  document.querySelectorAll(".souscat-btn").forEach((b) => b.classList.remove("active"));
+  bouton?.classList.add("active");
+
+  const requete = { type: "categorie", categorie: cat, params: {}, page: 1 };
+  await chargerTmdb(construireUrlTmdb(requete, 1), requete);
+}
+
 document.querySelectorAll(".souscat-btn").forEach((btn) => {
-  btn.addEventListener("click", async () => {
-    document.querySelectorAll(".souscat-btn").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-
-    const routes = {
-      populaires: `${API}/tmdb/populaires`,
-      tendances: `${API}/tmdb/tendances`,
-      "mieux-notees": `${API}/tmdb/mieux-notees`,
-      "diffusees-bientot": `${API}/tmdb/diffusees-bientot`,
-    };
-
-    document.getElementById("resultats-tmdb").innerHTML = "<p>Chargement...</p>";
-    try {
-      const resultats = await appelApi(routes[btn.dataset.cat]);
-      afficherResultatsTmdb(resultats);
-    } catch (err) {
-      document.getElementById("resultats-tmdb").innerHTML = `<p>Erreur : ${err.message}</p>`;
-    }
-  });
+  btn.addEventListener("click", () => chargerCategorieTmdb(btn.dataset.cat, btn));
 });
 
 document.getElementById("form-recherche-tmdb").addEventListener("submit", async (e) => {
   e.preventDefault();
   const titre = document.getElementById("input-recherche").value;
   if (!titre) return;
+
+  const requete = { type: "recherche", params: { titre }, page: 1 };
+  await chargerTmdb(construireUrlTmdb(requete, 1), requete);
+});
+
+document.getElementById("form-decouvrir").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const genre = document.getElementById("select-genre").value;
+  const annee = document.getElementById("input-annee").value;
+  const noteMin = document.getElementById("input-note-min").value;
+
+  const params = {};
+  if (genre) params.genre = genre;
+  if (annee) params.annee = annee;
+  if (noteMin) params.noteMin = noteMin;
+
+  const requete = { type: "decouvrir", params, page: 1 };
+  await chargerTmdb(construireUrlTmdb(requete, 1), requete);
+});
+
+// Boutons Précédent / Suivant
+document.getElementById("btn-page-prec").addEventListener("click", () => {
+  if (!requeteTmdbCourante || requeteTmdbCourante.page <= 1) return;
+  const page = requeteTmdbCourante.page - 1;
+  chargerTmdb(construireUrlTmdb(requeteTmdbCourante, page), requeteTmdbCourante);
+});
+
+document.getElementById("btn-page-suiv").addEventListener("click", () => {
+  if (!requeteTmdbCourante) return;
+  const page = requeteTmdbCourante.page + 1;
+  chargerTmdb(construireUrlTmdb(requeteTmdbCourante, page), requeteTmdbCourante);
+});
+
+document.querySelectorAll(".souscat-btn").forEach((btn) => {
+  btn.addEventListener("click", () => chargerCategorieTmdb(btn.dataset.cat, btn));
+});
+
+document.getElementById("form-recherche-tmdb").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const titre = document.getElementById("input-recherche").value;
+  if (!titre) return;
+
+  const conteneur = document.getElementById("resultats-tmdb");
+  conteneur.innerHTML = messageChargement();
   try {
     const resultats = await appelApi(`${API}/tmdb/recherche?titre=${encodeURIComponent(titre)}`);
     afficherResultatsTmdb(resultats);
   } catch (err) {
-    document.getElementById("resultats-tmdb").innerHTML = `<p>Erreur : ${err.message}</p>`;
+    conteneur.innerHTML = messageErreur(err.message);
   }
 });
 
 // --- Discover: genre / year / rating filter ---
 
 async function chargerGenres() {
+  const select = document.getElementById("select-genre");
+  // Reset (idempotent if called twice)
+  select.innerHTML = '<option value="">Tous les genres</option>';
+
   try {
     const genres = await appelApi(`${API}/tmdb/genres`);
-    const select = document.getElementById("select-genre");
     for (const genre of genres) {
       const option = document.createElement("option");
       option.value = genre.id;
       option.textContent = genre.nom;
       select.appendChild(option);
     }
-  } catch {
-    // Genre dropdown just stays with "Tous les genres" if TMDB is unreachable
-  }
+  } catch { /* TMDB unreachable — dropdown stays with only "Tous les genres" */ }
 }
 
 document.getElementById("form-decouvrir").addEventListener("submit", async (e) => {
@@ -462,16 +678,19 @@ document.getElementById("form-decouvrir").addEventListener("submit", async (e) =
   if (annee) params.set("annee", annee);
   if (noteMin) params.set("noteMin", noteMin);
 
-  document.getElementById("resultats-tmdb").innerHTML = "<p>Chargement...</p>";
+  const conteneur = document.getElementById("resultats-tmdb");
+  conteneur.innerHTML = messageChargement();
   try {
     const resultats = await appelApi(`${API}/tmdb/decouvrir?${params.toString()}`);
     afficherResultatsTmdb(resultats);
   } catch (err) {
-    document.getElementById("resultats-tmdb").innerHTML = `<p>Erreur : ${err.message}</p>`;
+    conteneur.innerHTML = messageErreur(err.message);
   }
 });
 
 // --- Actor search + filmography ---
+
+let acteursEnMemoire = [];
 
 document.getElementById("form-recherche-acteur").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -479,54 +698,68 @@ document.getElementById("form-recherche-acteur").addEventListener("submit", asyn
   if (!nom) return;
 
   const conteneur = document.getElementById("resultats-acteurs");
-  conteneur.innerHTML = "<p>Chargement...</p>";
+  conteneur.innerHTML = messageChargement();
 
   let acteurs;
   try {
     acteurs = await appelApi(`${API}/tmdb/recherche-acteur?nom=${encodeURIComponent(nom)}`);
   } catch (err) {
-    conteneur.innerHTML = `<p>Erreur : ${err.message}</p>`;
+    conteneur.innerHTML = messageErreur(err.message);
     return;
   }
 
-  if (acteurs.length === 0) {
+  acteursEnMemoire = acteurs || [];
+
+  if (acteursEnMemoire.length === 0) {
     conteneur.innerHTML = messageVide("Aucun acteur trouvé pour cette recherche.");
     return;
   }
 
+  rendreActeurs();
+});
+
+function rendreActeurs() {
+  const conteneur = document.getElementById("resultats-acteurs");
   conteneur.innerHTML = "";
-  for (const acteur of acteurs) {
+
+  for (const acteur of acteursEnMemoire) {
     const carte = creerElement(`
       <div class="serie-card acteur-card" data-acteur-id="${acteur.id}">
-        <img src="${acteur.photoUrl || IMAGE_PLACEHOLDER}" alt="Photo de ${acteur.nom}"
-             onerror="this.src='${IMAGE_PLACEHOLDER}'">
+        <img src="${acteur.photoUrl || IMAGE_PLACEHOLDER}" alt="Photo de ${acteur.nom}">
         <div class="contenu"><h3>${acteur.nom}</h3></div>
       </div>
     `);
+    attacherPlaceholder(carte.querySelector("img"));
     carte.addEventListener("click", () => afficherFilmographie(acteur));
     conteneur.appendChild(carte);
   }
-});
+}
 
 async function afficherFilmographie(acteur) {
   const conteneur = document.getElementById("resultats-acteurs");
-  conteneur.innerHTML = `<p>Chargement de la filmographie de ${acteur.nom}...</p>`;
+  conteneur.innerHTML = messageChargement(`Chargement de la filmographie de ${acteur.nom}...`);
 
   let series;
   try {
     series = await appelApi(`${API}/tmdb/acteur/${acteur.id}/series`);
   } catch (err) {
-    conteneur.innerHTML = `<p>Erreur : ${err.message}</p>`;
+    conteneur.innerHTML = messageErreur(err.message);
     return;
   }
 
-  conteneur.innerHTML = `<h3 class="card">Séries avec ${acteur.nom}</h3>`;
-  const grille = creerElement('<div class="grid"></div>');
-  conteneur.appendChild(grille);
-  // afficherResultatsTmdb(series, null); // placeholder call replaced below
-  // afficherResultatsTmdb expects an element id, so render directly into the fresh grid instead:
-  grille.id = "resultats-filmographie";
-  afficherResultatsTmdb(series, "resultats-filmographie");
+  // Reset container classes: we don't want grid-in-grid layout here
+  conteneur.classList.remove("grid");
+  conteneur.innerHTML = `
+    <button type="button" class="btn-retour" id="btn-retour-acteurs">← Retour aux acteurs</button>
+    <h3 class="titre-section">Séries avec ${acteur.nom}</h3>
+    <div class="grid" id="resultats-filmographie"></div>
+  `;
+  document.getElementById("btn-retour-acteurs").addEventListener("click", () => {
+    conteneur.classList.add("grid");
+    rendreActeurs();
+  });
+
+  afficherResultatsTmdb(series, "resultats-filmographie", { avecImport: true });
 }
 
 // --- Startup ---
